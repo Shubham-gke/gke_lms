@@ -1891,6 +1891,7 @@ SKILLS_GRADE_API = (
 )
 
 
+
 @frappe.whitelist(allow_guest=True)
 def validate_enrolled_course_skills(user: str | None = None):
     user = user or frappe.session.user
