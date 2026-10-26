@@ -39,12 +39,14 @@ use_json_request_body = True
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/lms_custom/css/lms_custom.css"
-# app_include_js = "/assets/lms_custom/js/lms_custom.js"
+# app_include_js = [
+#     "/assets/lms_custom/js/similar_courses.js"
+# ]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/lms_custom/css/lms_custom.css"
-# web_include_js = "/assets/lms_custom/js/lms_custom.js"
-
+# web_include_js = "/assets/lms_custom/js/similar_courses.js"
+# update_website_context = "lms_custom.lms_gke_custom.api.course_assignment.inject_custom_js"
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "lms_custom/public/scss/website"
 
@@ -168,10 +170,24 @@ use_json_request_body = True
 # Permissions
 # -----------
 # Permissions evaluated in scripted ways
-
+# on_session_creation = "lms_custom.lms_gke_custom.api.course_assignment.on_session_creation"
 # permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
+# 	# "Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
+#     "LMS Course": "lms_custom.lms_gke_custom.api.course_assignment.lms_course_permission_query"
 # }
+
+override_whitelisted_methods = {
+    "lms.lms.utils.get_lesson": "lms_custom.lms_gke_custom.api.course_assignment.get_lesson_with_lock",
+	"lms.lms.utils.get_courses":
+		"lms_custom.lms_gke_custom.api.course_assignment.get_filtered_courses",
+  
+	# "lms.lms.utils.get_courses":"lms_custom.lms_gke_custom.api.course_assignment.validate_enrolled_course_skills",
+
+	"lms.lms.api.get_my_courses":
+		"lms_custom.lms_gke_custom.api.course_assignment.get_filtered_courses",
+  
+	"lms.lms.utils.get_course_details": "lms_custom.lms_gke_custom.api.course_assignment.get_course_details_with_skills",
+}
 #
 # has_permission = {
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
@@ -181,13 +197,16 @@ use_json_request_body = True
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"LMS Enrollment": {
+		"on_update": "lms_custom.lms_gke_custom.api.course_assignment.on_lms_enrollment_update",
+  		# "before_insert": "lms_custom.lms_gke_custom.api.course_assignment.validate_enrollment_sequence"
+    "LMS Course Progress": {
+        "before_insert": "lms_custom.lms_gke_custom.api.course_assignment.validate_progress_insert"
+    }
+	}
+}
+
 
 # Scheduled Tasks
 # ---------------
@@ -227,7 +246,7 @@ use_json_request_body = True
 # ------------------------------
 #
 # override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "lms_custom.event.get_events"
+#     "lms.lms.utils.get_lesson": "lms_custom.lms_gke_custom.api.course_assignment.get_lesson_with_lock"
 # }
 #
 # each overriding function accepts a `data` argument;
@@ -249,7 +268,7 @@ use_json_request_body = True
 # Request Events
 # ----------------
 # before_request = ["lms_custom.utils.before_request"]
-# after_request = ["lms_custom.utils.after_request"]
+# after_request = ["lms_custom.lms_gke_custom.inject_link.add_link"]
 
 # Job Events
 # ----------

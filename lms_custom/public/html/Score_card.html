@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Employee Score Card</title>
+
+<style>
+:root {
+  --bg: #141414;
+  --card: #1d1d1d;
+  --border: #343434;
+  --text: #f5f5f5;
+  --muted: #aaa;
+  --green: #4ade80;
+  --blue: #60a5fa;
+  --orange: #fbbf24;
+  --red: #f87171;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 18px; background: var(--bg); color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+.card {
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--card); margin-bottom: 18px; overflow: hidden;
+}
+.profile { padding: 22px; display: flex; gap: 16px; align-items: center; }
+.avatar {
+  width: 58px; height: 58px; flex-shrink: 0; border-radius: 50%;
+  background: #333; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 20px;
+}
+.name { font-size: 21px; font-weight: 700; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 16px 28px; margin-top: 12px; }
+.meta div { font-size: 12px; color: var(--muted); }
+.meta strong { display: block; font-size: 13px; color: var(--text); margin-top: 5px; }
+.kpis {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px; padding: 18px; border-top: 1px solid var(--border);
+}
+.kpi { padding: 18px; background: #252525; border: 1px solid var(--border); border-radius: 8px; }
+.kpi-label { color: var(--muted); text-transform: uppercase; font-size: 11px; }
+.kpi-value { font-size: 28px; font-weight: 800; margin-top: 9px; }
+.kpi-sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
+.section { padding: 22px; border-top: 1px solid var(--border); }
+.section-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+.section-subtitle { font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  background: #2b2b2b; border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 12px; font-size: 13px;
+}
+.score-panel {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px; flex-wrap: wrap; padding: 20px;
+  border: 1px solid var(--border); border-left: 5px solid var(--blue);
+  border-radius: 8px; background: #252525; margin-bottom: 18px;
+}
+.score-panel.green { border-left-color: var(--green); }
+.score-panel.red { border-left-color: var(--red); }
+.score-panel.orange { border-left-color: var(--orange); }
+.score-label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.score-value { font-size: 34px; font-weight: 800; margin-top: 6px; }
+.score-right { text-align: right; }
+.pill { display: inline-block; background: #333; border-radius: 20px; padding: 6px 10px; font-size: 12px; }
+.score-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+.table-wrap { width: 100%; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--muted); background: #282828; font-size: 11px; text-transform: uppercase; white-space: nowrap; }
+th, td { padding: 12px; border-bottom: 1px solid #353535; }
+td { vertical-align: top; }
+tfoot td { font-weight: 700; background: #282828; }
+.badge { display: inline-block; border-radius: 15px; padding: 4px 9px; font-size: 11px; white-space: nowrap; }
+.completed { color: var(--green); background: #173b28; }
+.in-progress { color: var(--blue); background: #18304c; }
+.assigned { color: var(--muted); background: #333; }
+.progress-bar { display: inline-block; width: 65px; height: 6px; background: #444; border-radius: 5px; overflow: hidden; vertical-align: middle; margin-right: 5px; }
+.progress-fill { display: block; height: 100%; background: var(--blue); }
+.quiz { font-size: 12px; margin-bottom: 5px; color: var(--muted); }
+.empty { padding: 20px; color: var(--muted); text-align: center; font-size: 13px; }
+.error-text { color: var(--red); }
+
+/* Skill gap */
+.s-low   { color: var(--red);    background: #4a1d1d; }
+.s-equal { color: var(--orange); background: #4a3a10; }
+.s-high  { color: var(--green);  background: #173b28; }
+.rating-low   { color: var(--red);    font-weight: 700; }
+.rating-equal { color: var(--orange); font-weight: 700; }
+.rating-high  { color: var(--green);  font-weight: 700; }
+.course-slug { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; }
+.no-course { color: var(--muted); font-size: 12px; }
+
+@media(max-width: 700px) {
+  body { padding: 9px; }
+  .kpis { grid-template-columns: 1fr; padding: 12px; }
+  .profile, .section { padding: 15px; }
+  .score-right { text-align: left; }
+}
+</style>
+</head>
+
+<body>
+<div class="card">
+  <div class="profile">
+    <div class="avatar" id="empInitials">--</div>
+    <div>
+      <div class="name" id="empName">Loading employee...</div>
+      <div class="meta">
+        <div>User<strong id="empId">-</strong></div>
+        <div>Designation<strong id="empDesignation">-</strong></div>
+        <div>Department<strong id="empDepartment">-</strong></div>
+        <div>Courses Enrolled<strong id="empCourseCount">0</strong></div>
+        <div>Average Quiz<strong id="empAvgQuiz">-</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi">
+      <div class="kpi-label">Courses Completed</div>
+      <div class="kpi-value" id="kpiCompletion">0</div>
+      <div class="kpi-sub" id="kpiCompletionSub">Loading...</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">In Progress</div>
+      <div class="kpi-value" id="kpiInProgress">0</div>
+      <div class="kpi-sub">Courses started but not completed</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Enrolled</div>
+      <div class="kpi-value" id="kpiTotal">0</div>
+      <div class="kpi-sub">Total enrolled courses</div>
+    </div>
+  </div>
+</div>
+
+<!-- SKILLS -->
+<div class="card">
+  <div class="section">
+    <div class="section-title">Skills
+      <div class="section-subtitle">Skills mapped to the designation</div>
+    </div>
+    <div class="chips" id="skillsList"></div>
+    <div class="empty" id="skillsEmpty" style="display:none">
+      No skills mapped to this designation.
+    </div>
+  </div>
+</div>
+
+<!-- SKILL GAP -->
+<div class="card">
+  <div class="section">
+    <div class="section-title">Skill Gap &amp; Assigned Courses
+      <div class="section-subtitle" id="skillGapMeta">Rating given by manager vs required rating</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Skill</th>
+            <th>User Rating</th>
+            <th>Required Rating</th>
+            <th>Status</th>
+            <th>Assigned Course</th>
+          </tr>
+        </thead>
+        <tbody id="skillGapBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="skillGapEmpty" style="display:none">
+      No skill gap data found.
+    </div>
+  </div>
+</div>
+
+<!-- APPRAISAL SCORE -->
+<div class="card">
+  <div class="section">
+    <div class="section-title">Appraisal Score
+      <div class="section-subtitle" id="appraisalMeta">Loading appraisal...</div>
+    </div>
+
+    <div class="score-panel" id="scoreBox">
+      <div>
+        <div class="score-label">Total Score</div>
+        <div class="score-value" id="scoreValue">-</div>
+      </div>
+      <div class="score-right">
+        <span class="pill" id="scorePill">Loading</span>
+        <div class="score-note" id="scoreNote">Fetching appraisal score...</div>
+      </div>
+    </div>
+
+    <div class="section-title">Appraisal KRA Details</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>KRA</th>
+            <th>Weightage</th>
+            <th>Goal Completion</th>
+            <th>Goal Score</th>
+          </tr>
+        </thead>
+        <tbody id="appraisalKraBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="appraisalEmpty" style="display:none">
+      No appraisal KRA found.
+    </div>
+  </div>
+</div>
+
+<!-- LMS COURSES AND QUIZZES -->
+<div class="card">
+  <div class="section">
+    <div class="section-title">Course Progress &amp; Quiz Scores</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Progress</th>
+            <th>Status</th>
+            <th>Enrolled On</th>
+            <th>Average Quiz</th>
+            <th>Quiz Details</th>
+          </tr>
+        </thead>
+        <tbody id="trainingBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="trainingEmpty" style="display:none">
+      No courses enrolled.
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* Apni actual Python API paths yahan same rakho. */
+const LMS_DATA_API =
+  "/api/method/lms_custom.lms_gke_custom.api.course_assignment.get_employee_lms_data";
+
+const APPRAISAL_API =
+  "/api/method/lms_custom.lms_gke_custom.api.course_assignment.calculate_goal_score";
+
+const SKILL_GAP_API =
+  "/api/method/lms_custom.lms_gke_custom.api.course_assignment.validate_enrolled_course_skills";
+
+const SCORE_THRESHOLD = 5;
+
+function el(id) {
+  return document.getElementById(id);
+}
+
+function setText(id, value) {
+  el(id).textContent =
+    value === null || value === undefined || value === "" ? "-" : String(value);
+}
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[ch]);
+}
+
+function num(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toLocaleString(undefined, {maximumFractionDigits: 2}) : "-";
+}
+
+function getInitials(name) {
+  return String(name || "--")
+    .split(/[\s.@_]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(s => s.charAt(0).toUpperCase())
+    .join("");
+}
+
+function getCourseStatus(progress) {
+  const p = Number(progress) || 0;
+  if (p >= 100) return ["Completed", "completed"];
+  if (p > 0) return ["In Progress", "in-progress"];
+  return ["Not Started", "assigned"];
+}
+
+/* Skills of the designation (data.skills = [{ idx, skill }]) */
+function renderSkills(skills) {
+  const list = el("skillsList");
+  const empty = el("skillsEmpty");
+  const items = Array.isArray(skills) ? skills : [];
+
+  if (!items.length) {
+    list.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+
+  empty.style.display = "none";
+  list.innerHTML = items.map(s => {
+    const name = typeof s === "string" ? s : (s.skill || s.name || "-");
+    return `<span class="chip">${esc(name)}</span>`;
+  }).join("");
+}
+
+/* 1. LMS profile, KPIs, skills, courses and quiz information */
+function renderLMS(data) {
+  const courses = Array.isArray(data.courses) ? data.courses : [];
+  const user = data.user || data.user_id || "-";
+
+  setText("empName", data.employee_name || user);
+  setText("empInitials", getInitials(data.employee_name || user));
+  setText("empId", user);
+  setText("empDesignation", data.designation || "-");
+  setText("empDepartment", data.department || "-");
+  setText("empCourseCount", courses.length);
+
+  renderSkills(data.skills);
+
+  const quizScores = courses
+    .map(c => c.avg_quiz_percentage)
+    .filter(v => v !== null && v !== undefined && v !== "")
+    .map(Number)
+    .filter(Number.isFinite);
+
+  const avgQuiz = quizScores.length
+    ? quizScores.reduce((a, b) => a + b, 0) / quizScores.length
+    : null;
+
+  setText("empAvgQuiz", avgQuiz === null ? "-" : num(avgQuiz) + "%");
+
+  const completed = courses.filter(c => Number(c.progress) >= 100).length;
+  const inProgress = courses.filter(c => {
+    const p = Number(c.progress) || 0;
+    return p > 0 && p < 100;
+  }).length;
+
+  setText("kpiCompletion", completed);
+  setText("kpiCompletionSub", `Completed out of ${courses.length} courses`);
+  setText("kpiInProgress", inProgress);
+  setText("kpiTotal", courses.length);
+
+  const body = el("trainingBody");
+  const empty = el("trainingEmpty");
+
+  if (!courses.length) {
+    body.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+
+  empty.style.display = "none";
+
+  body.innerHTML = courses.map(c => {
+    const progress = Number(c.progress) || 0;
+    const width = Math.max(0, Math.min(100, progress));
+    const [status, css] = getCourseStatus(progress);
+    const quizzes = Array.isArray(c.quizzes) ? c.quizzes : [];
+
+    const quizHtml = quizzes.length
+      ? quizzes.map(q => `
+          <div class="quiz">
+            ${esc(q.quiz_title || q.quiz || "Quiz")}:
+            ${q.attempted
+              ? (q.percentage == null ? "Attempted" : esc(num(q.percentage)) + "%")
+              : "Not attempted"}
+          </div>
+        `).join("")
+      : '<div class="quiz">No quizzes</div>';
+
+    return `<tr>
+      <td>${esc(c.course_title || c.course || "-")}</td>
+      <td>
+        <span class="progress-bar"><span class="progress-fill" style="width:${width}%"></span></span>
+        ${num(progress)}%
+      </td>
+      <td><span class="badge ${css}">${status}</span></td>
+      <td>${esc(c.enrolled_on ? String(c.enrolled_on).split(" ")[0] : "-")}</td>
+      <td>${c.avg_quiz_percentage == null ? "-" : esc(num(c.avg_quiz_percentage)) + "%"}</td>
+      <td>${quizHtml}</td>
+    </tr>`;
+  }).join("");
+}
+
+/* 2. Appraisal score and KRA data from calculate_goal_score */
+function renderAppraisal(data) {
+  const box = el("scoreBox");
+  box.classList.remove("green", "red", "orange");
+
+  const score = Number(data.total_score);
+  const appraisal =
+    data.appraisal ||
+    (Array.isArray(data.result?.appraisals) ? data.result.appraisals[0] : null);
+
+  setText(
+    "appraisalMeta",
+    [appraisal?.name, appraisal?.status].filter(Boolean).join(" | ") || "Appraisal"
+  );
+
+  if (data.total_score !== null && data.total_score !== undefined &&
+      data.total_score !== "" && Number.isFinite(score)) {
+    const color = score < SCORE_THRESHOLD ? "red" :
+      score === SCORE_THRESHOLD ? "orange" : "green";
+
+    box.classList.add(color);
+    setText("scoreValue", num(score));
+    setText("scorePill", data.pip_created ? "PIP Created" :
+      (score < SCORE_THRESHOLD ? "Below Threshold" : "Threshold Met"));
+    setText("scoreNote", data.message || `Threshold: ${SCORE_THRESHOLD}`);
+  } else {
+    setText("scoreValue", "-");
+    setText("scorePill", "Score unavailable");
+    setText("scoreNote", data.message || "Total score not returned by API.");
+  }
+
+  /*
+   * Support all three response shapes:
+   * data.appraisal_kra
+   * data.appraisal.appraisal_kra
+   * data.result.appraisals[0].appraisal_kra
+   */
+  let kras = data.appraisal_kra;
+  if (!Array.isArray(kras)) kras = data.appraisal?.appraisal_kra;
+  if (!Array.isArray(kras)) kras = appraisal?.appraisal_kra;
+  if (!Array.isArray(kras)) kras = data.result?.appraisals?.[0]?.appraisal_kra;
+  if (!Array.isArray(kras)) kras = [];
+
+  const body = el("appraisalKraBody");
+  const empty = el("appraisalEmpty");
+
+  if (!kras.length) {
+    body.innerHTML = "";
+    empty.style.display = "block";
+    empty.textContent = "No appraisal KRA returned by calculate_goal_score.";
+    return;
+  }
+
+  empty.style.display = "none";
+  body.innerHTML = kras.map((kra, index) => `
+    <tr>
+      <td>${esc(kra.idx || index + 1)}</td>
+      <td>${esc(kra.kra || "-")}</td>
+      <td>${num(kra.per_weightage)}%</td>
+      <td>${num(kra.goal_completion)}%</td>
+      <td>${num(kra.goal_score)}</td>
+    </tr>
+  `).join("");
+}
+
+/* 3. Skill gap: user rating vs required rating, with the assigned course */
+
+/* Frappe rating 0-1 hoti hai, usse 5 star scale me dikhao (0.3 -> 1.5 / 5) */
+function stars(r) {
+  const n = Number(r);
+  return Number.isFinite(n) ? (n * 5).toFixed(1).replace(/\.0$/, "") + " / 5" : "-";
+}
+
+function skillStatus(user, required) {
+  const u = Number(user), r = Number(required);
+  if (Math.abs(u - r) < 0.0001) return ["Equal", "equal"];
+  return u < r ? ["Low", "low"] : ["High", "high"];
+}
+
+function renderSkillGap(data) {
+  const body = el("skillGapBody");
+  const empty = el("skillGapEmpty");
+  const matched = Array.isArray(data.matched_courses) ? data.matched_courses : [];
+  const received = Array.isArray(data.skills_received) ? data.skills_received : [];
+  const rows = [];
+  const seen = new Set();
+
+  /* Skills jinke course match hue */
+  matched.forEach(c => {
+    (c.matched_skills || []).forEach(s => {
+      const key = String(s.skill || "").toLowerCase();
+      seen.add(key);
+      rows.push({
+        skill: s.skill,
+        user: s.user_rating,
+        required: s.required_rating,
+        courseTitle: c.title || c.course || "",
+        courseSlug: c.course || ""
+      });
+    });
+  });
+
+  /* Manager ne rate kiya lekin koi course match nahi hua */
+  received.forEach(s => {
+    const key = String(s.skill || "").toLowerCase();
+    if (!seen.has(key)) {
+      rows.push({
+        skill: s.skill,
+        user: s.rating,
+        required: null,
+        courseTitle: "",
+        courseSlug: ""
+      });
+    }
+  });
+
+  if (!rows.length) {
+    body.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+
+  empty.style.display = "none";
+  body.innerHTML = rows.map((r, i) => {
+    const hasRequired = r.required !== null && r.required !== undefined;
+    const [label, css] = hasRequired ? skillStatus(r.user, r.required) : ["No course", "equal"];
+    const ratingCss = hasRequired ? css : "equal";
+
+    const courseHtml = r.courseTitle
+      ? `${esc(r.courseTitle)}${r.courseSlug ? `<span class="course-slug">${esc(r.courseSlug)}</span>` : ""}`
+      : '<span class="no-course">No course mapped</span>';
+
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>${esc(r.skill)}</td>
+      <td class="rating-${ratingCss}">${stars(r.user)}</td>
+      <td>${hasRequired ? stars(r.required) : "-"}</td>
+      <td><span class="badge s-${css}">${label}</span></td>
+      <td>${courseHtml}</td>
+    </tr>`;
+  }).join("");
+}
+
+function showSkillGapError(message) {
+  el("skillGapBody").innerHTML = "";
+  el("skillGapEmpty").style.display = "block";
+  el("skillGapEmpty").textContent = message;
+}
+
+async function loadSkillGap(user) {
+  try {
+    const url = new URL(SKILL_GAP_API, window.location.origin);
+    url.searchParams.set("user", user);
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      credentials: "same-origin"
+    });
+    if (!response.ok) throw new Error(`Skill Gap API HTTP ${response.status}`);
+
+    const json = await response.json();
+    const data = json.message || {};
+    if (!data.success) throw new Error(data.message || "Skill gap API returned success=false");
+
+    renderSkillGap(data);
+  } catch (error) {
+    console.error("Skill gap error:", error);
+    showSkillGapError(error.message || "Could not load skill gap.");
+  }
+}
+
+/* 4. APIs load independently so one failure does not hide the other section. */
+async function loadLMS() {
+  try {
+    const response = await fetch(LMS_DATA_API, {
+      method: "GET",
+      credentials: "same-origin"
+    });
+
+    if (!response.ok) throw new Error(`LMS API HTTP ${response.status}`);
+
+    const json = await response.json();
+    const data = json.message || {};
+
+    renderLMS(data);
+
+    if (data.user) {
+      loadAppraisal(data.user);
+      loadSkillGap(data.user);
+    } else {
+      showAppraisalError("LMS API did not return a user.");
+      showSkillGapError("LMS API did not return a user.");
+    }
+  } catch (error) {
+    console.error("LMS API error:", error);
+    setText("empName", "LMS data could not be loaded");
+    el("trainingEmpty").style.display = "block";
+    el("trainingEmpty").textContent = error.message;
+  }
+}
+
+async function loadAppraisal(user) {
+  try {
+    const url = new URL(APPRAISAL_API, window.location.origin);
+    url.searchParams.set("user_id", user);
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      credentials: "same-origin"
+    });
+
+    if (!response.ok) throw new Error(`Appraisal API HTTP ${response.status}`);
+
+    const json = await response.json();
+    const data = json.message || {};
+
+    if (!data.success) {
+      throw new Error(data.message || "Appraisal API returned success=false");
+    }
+
+    renderAppraisal(data);
+  } catch (error) {
+    console.error("calculate_goal_score error:", error);
+    showAppraisalError(error.message || "Could not load appraisal.");
+  }
+}
+
+function showAppraisalError(message) {
+  setText("scoreValue", "-");
+  setText("scorePill", "API Error");
+  setText("scoreNote", message);
+  el("appraisalKraBody").innerHTML = "";
+  el("appraisalEmpty").style.display = "block";
+  el("appraisalEmpty").textContent = message;
+}
+
+loadLMS();
+</script>
+</body>
+</html>
