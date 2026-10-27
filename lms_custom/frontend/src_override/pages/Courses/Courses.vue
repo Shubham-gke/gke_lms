@@ -108,7 +108,7 @@ import {
 } from 'frappe-ui'
 import ClearableCombobox from '@/components/Controls/ClearableCombobox.vue'
 import ToggleFilter from '@/components/Controls/ToggleFilter.vue'
-import ListPage from '@/components/Layouts/pages/ListPage.vue'
+import ListPage from '@/components/Layouts/ListPage.vue'
 import { computed, inject, onMounted, ref, watch } from 'vue'
 import { sessionStore } from '@/stores/session'
 import { canCreateCourse } from '@/utils'

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BENCH="$HOME/frappe/frappe-bench"
+BENCH="/home/frappe/frappe-bench-lms"
 FRONTEND="$BENCH/apps/lms/frontend"
 CUSTOM="$BENCH/apps/lms_custom/lms_custom/frontend"
 SRC="$FRONTEND/src"
