@@ -53,7 +53,7 @@
 # #         allowed_courses.extend(
 # #             [row.course for row in courses if row.course]
 # #         )
-		
+        
 # #     # frappe.throw(allowed_courses)
 # #     return allowed_courses
 
@@ -315,803 +315,839 @@ HRMS_API_URL = "http://ec2-13-234-27-130.ap-south-1.compute.amazonaws.com:8001/a
 
 @frappe.whitelist(allow_guest=True)
 def get_employee_dept_designation(user: str | None = None) -> tuple:
-	"""Fetch department, designation, skills and goals from the HRMS API."""
-	# frappe.throw("lkjhugtfdrtfyguh")
-	user = user or frappe.session.user
+    """Fetch department, designation, skills and goals from the HRMS API."""
+    # frappe.throw("lkjhugtfdrtfyguh")
+    user = user or frappe.session.user
 
-	if not user or user == "Guest":
-		return None, None, [], []
+    if not user or user == "Guest":
+        return None, None, [], []
 
-	api_url = frappe.conf.get("hrms_api_url") or HRMS_API_URL
+    api_url = frappe.conf.get("hrms_api_url") or HRMS_API_URL
 
-	headers = {}
-	api_key = frappe.conf.get("hrms_api_key")
-	api_secret = frappe.conf.get("hrms_api_secret")
-	if api_key and api_secret:
-		headers["Authorization"] = f"token {api_key}:{api_secret}"
+    headers = {}
+    api_key = frappe.conf.get("hrms_api_key")
+    api_secret = frappe.conf.get("hrms_api_secret")
+    if api_key and api_secret:
+        headers["Authorization"] = f"token {api_key}:{api_secret}"
 
-	try:
-		# frappe.throw("kjhgjk")
-		response = requests.get(
-			api_url,
-			params={"user_id": user},
-			# headers=headers,
-			timeout=10,
-		)
-		response.raise_for_status()
-		data = response.json().get("message") or {}
-		# frappe.throw(f"{data}")
+    try:
+        # frappe.throw("kjhgjk")
+        response = requests.get(
+            api_url,
+            params={"user_id": user},
+            # headers=headers,
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json().get("message") or {}
+        # frappe.throw(f"{data}")
 
-	except Exception as e:
-		# frappe.throw(str(e))
-		frappe.log_error(
-			title="Employee API Call Failed",
-			message=frappe.get_traceback(),
-		)
-		return None, None, [], []
+    except Exception as e:
+        # frappe.throw(str(e))
+        frappe.log_error(
+            title="Employee API Call Failed",
+            message=frappe.get_traceback(),
+        )
+        return None, None, [], []
 
-	if isinstance(data, list):
-		data = next((emp for emp in data if emp.get("user_id") == user), {})
+    if isinstance(data, list):
+        data = next((emp for emp in data if emp.get("user_id") == user), {})
 
-	return (
-		data.get("department"),
-		data.get("designation"),
-		data.get("skills") or [],
-		data.get("goals") or [],
-	)
+    return (
+        data.get("department"),
+        data.get("designation"),
+        data.get("skills") or [],
+        data.get("goals") or [],
+    )
  
  
 def get_matched_courses(department, designation):
-	"""Course Assignment Rule ke according ordered courses return karo."""
+    """Course Assignment Rule ke according ordered courses return karo."""
 
-	if not department or not designation:
-		return []
+    if not department or not designation:
+        return []
 
-	rule_names = frappe.get_all(
-		"Course Assignment Rule",
-		filters={
-			"department": department,
-			"designation": designation,
-			"is_active": 1
-		},
-		pluck="name"
-	)
+    rule_names = frappe.get_all(
+        "Course Assignment Rule",
+        filters={
+            "department": department,
+            "designation": designation,
+            "is_active": 1
+        },
+        pluck="name"
+    )
  
-	# frappe.throw(f"{rule_names}")
+    # frappe.throw(f"{rule_names}")
 
-	if not rule_names:
-		return []
+    if not rule_names:
+        return []
 
-	course_rows = frappe.get_all(
-		"Course Based On Rule",
-		filters={
-			"parent": ["in", rule_names]
-		},
-		fields=[
-			"course",
-			"idx",
-			"parent"
-		],
-		order_by="parent, idx"
-	)
+    course_rows = frappe.get_all(
+        "Course Based On Rule",
+        filters={
+            "parent": ["in", rule_names]
+        },
+        fields=[
+            "course",
+            "idx",
+            "parent"
+        ],
+        order_by="parent, idx"
+    )
  
-	# frappe.throw(f"{course_rows}")
+    # frappe.throw(f"{course_rows}")
 
-	seen = set()
-	ordered_courses = []
+    seen = set()
+    ordered_courses = []
 
-	for row in course_rows:
-		if row.course and row.course not in seen:
-			seen.add(row.course)
-			ordered_courses.append(row.course)
-	# frappe.throw(f"{ordered_courses}")	
-	return ordered_courses
+    for row in course_rows:
+        if row.course and row.course not in seen:
+            seen.add(row.course)
+            ordered_courses.append(row.course)
+    # frappe.throw(f"{ordered_courses}")	
+    return ordered_courses
 
 
 def get_user_ordered_courses(user):
-	"""User ke department/designation ke according courses."""
+    """User ke department/designation ke according courses."""
 
-	department, designation = get_employee_dept_designation(user)
+    department, designation = get_employee_dept_designation(user)
 
-	if not department or not designation:
-		return []
+    if not department or not designation:
+        return []
 
-	return get_matched_courses(
-		department,
-		designation
-	)
+    return get_matched_courses(
+        department,
+        designation
+    )
 
 
 def get_course_progress(user, course):
-	"""User ke course ka progress."""
+    """User ke course ka progress."""
 
-	progress = frappe.db.get_value(
-		"LMS Enrollment",
-		{
-			"member": user,
-			"course": course
-		},
-		"progress"
-	)
+    progress = frappe.db.get_value(
+        "LMS Enrollment",
+        {
+            "member": user,
+            "course": course
+        },
+        "progress"
+    )
 
-	return progress or 0
+    return progress or 0
 
 
 def get_current_course(user):
-	"""
-	First incomplete/un-enrolled course return karega.
-	"""
+    """
+    First incomplete/un-enrolled course return karega.
+    """
 
-	ordered_courses = get_user_ordered_courses(user)
+    ordered_courses = get_user_ordered_courses(user)
 
-	if not ordered_courses:
-		return None
+    if not ordered_courses:
+        return None
 
-	for course in ordered_courses:
+    for course in ordered_courses:
 
-		enrollment = frappe.db.get_value(
-			"LMS Enrollment",
-			{
-				"member": user,
-				"course": course
-			},
-			[
-				"name",
-				"progress"
-			],
-			as_dict=True
-		)
+        enrollment = frappe.db.get_value(
+            "LMS Enrollment",
+            {
+                "member": user,
+                "course": course
+            },
+            [
+                "name",
+                "progress"
+            ],
+            as_dict=True
+        )
 
-		if not enrollment:
-			return course
+        if not enrollment:
+            return course
 
-		if (enrollment.progress or 0) < 100:
-			return course
+        if (enrollment.progress or 0) < 100:
+            return course
 
-	return None
+    return None
 
 
 def check_course_access(user, course):
-	"""
-	Course enroll/open karne se pehle check karega.
+    """
+    Course enroll/open karne se pehle check karega.
 
-	First course:
-		Allowed
+    First course:
+        Allowed
 
-	Second course:
-		First course 100% hona chahiye
+    Second course:
+        First course 100% hona chahiye
 
-	Third course:
-		Second course 100% hona chahiye
-	"""
+    Third course:
+        Second course 100% hona chahiye
+    """
 
-	if user in ("Administrator", "Guest"):
-		return True
+    if user in ("Administrator", "Guest"):
+        return True
 
-	if "System Manager" in frappe.get_roles(user):
-		return True
+    if "System Manager" in frappe.get_roles(user):
+        return True
 
-	ordered_courses = get_user_ordered_courses(user)
+    ordered_courses = get_user_ordered_courses(user)
 
-	if not ordered_courses:
-		frappe.throw(
-			"No courses assigned to you."
-		)
+    if not ordered_courses:
+        frappe.throw(
+            "No courses assigned to you."
+        )
 
-	if course not in ordered_courses:
-		frappe.throw(
-			"This course is not assigned to you."
-		)
+    if course not in ordered_courses:
+        frappe.throw(
+            "This course is not assigned to you."
+        )
 
-	current_index = ordered_courses.index(course)
+    current_index = ordered_courses.index(course)
 
-	# First course
-	if current_index == 0:
-		return True
+    # First course
+    if current_index == 0:
+        return True
 
-	previous_course = ordered_courses[current_index - 1]
+    previous_course = ordered_courses[current_index - 1]
 
-	previous_progress = frappe.db.get_value(
-		"LMS Enrollment",
-		{
-			"member": user,
-			"course": previous_course
-		},
-		"progress"
-	)
+    previous_progress = frappe.db.get_value(
+        "LMS Enrollment",
+        {
+            "member": user,
+            "course": previous_course
+        },
+        "progress"
+    )
 
-	previous_progress = previous_progress or 0
+    previous_progress = previous_progress or 0
 
-	if previous_progress < 100:
-		frappe.throw(
-			f"Please complete '{previous_course}' before starting '{course}'."
-		)
+    if previous_progress < 100:
+        frappe.throw(
+            f"Please complete '{previous_course}' before starting '{course}'."
+        )
 
-	return True
+    return True
 
 
 def get_course_lock_status(user, course):
-	"""
-	Frontend ke liye course ka locked/unlocked status.
-	"""
+    """
+    Frontend ke liye course ka locked/unlocked status.
+    """
 
-	if user in ("Administrator", "Guest"):
-		return False
+    if user in ("Administrator", "Guest"):
+        return False
 
-	if "System Manager" in frappe.get_roles(user):
-		return False
+    if "System Manager" in frappe.get_roles(user):
+        return False
 
-	ordered_courses = get_user_ordered_courses(user)
+    ordered_courses = get_user_ordered_courses(user)
 
-	if not ordered_courses:
-		return True
+    if not ordered_courses:
+        return True
 
-	if course not in ordered_courses:
-		return True
+    if course not in ordered_courses:
+        return True
 
-	current_index = ordered_courses.index(course)
+    current_index = ordered_courses.index(course)
 
-	# First course always unlocked
-	if current_index == 0:
-		return False
+    # First course always unlocked
+    if current_index == 0:
+        return False
 
-	previous_course = ordered_courses[current_index - 1]
+    previous_course = ordered_courses[current_index - 1]
 
-	previous_progress = frappe.db.get_value(
-		"LMS Enrollment",
-		{
-			"member": user,
-			"course": previous_course
-		},
-		"progress"
-	)
+    previous_progress = frappe.db.get_value(
+        "LMS Enrollment",
+        {
+            "member": user,
+            "course": previous_course
+        },
+        "progress"
+    )
 
-	previous_progress = previous_progress or 0
+    previous_progress = previous_progress or 0
 
-	return previous_progress < 100
+    return previous_progress < 100
 
 
 def auto_enroll_courses(user):
-	"""
-	Sirf next eligible course enroll karega — ek call mein max 1 course.
+    """
+    Sirf next eligible course enroll karega — ek call mein max 1 course.
 
-	Example:
+    Example:
 
-	Course 1 = not enrolled
-	-> Course 1 enroll, stop
+    Course 1 = not enrolled
+    -> Course 1 enroll, stop
 
-	Course 1 = 50%
-	-> stop (abhi incomplete hai)
+    Course 1 = 50%
+    -> stop (abhi incomplete hai)
 
-	Course 1 = 100%
-	-> Course 2 enroll, stop
+    Course 1 = 100%
+    -> Course 2 enroll, stop
 
-	Course 2 = 50%
-	-> stop
+    Course 2 = 50%
+    -> stop
 
-	Course 2 = 100%
-	-> Course 3 enroll, stop
-	"""
+    Course 2 = 100%
+    -> Course 3 enroll, stop
+    """
 
-	if user in ("Administrator", "Guest"):
-		return
+    if user in ("Administrator", "Guest"):
+        return
 
-	ordered_courses = get_user_ordered_courses(user)
+    ordered_courses = get_user_ordered_courses(user)
 
-	if not ordered_courses:
-		return
+    if not ordered_courses:
+        return
 
-	for course in ordered_courses:
+    for course in ordered_courses:
 
-		enrollment = frappe.db.get_value(
-			"LMS Enrollment",
-			{
-				"member": user,
-				"course": course
-			},
-			[
-				"name",
-				"progress"
-			],
-			as_dict=True
-		)
+        enrollment = frappe.db.get_value(
+            "LMS Enrollment",
+            {
+                "member": user,
+                "course": course
+            },
+            [
+                "name",
+                "progress"
+            ],
+            as_dict=True
+        )
 
-		if enrollment:
+        if enrollment:
 
-			progress = enrollment.progress or 0
+            progress = enrollment.progress or 0
 
-			# Current course complete hai
-			# next course par jao
-			if progress >= 100:
-				continue
+            # Current course complete hai
+            # next course par jao
+            if progress >= 100:
+                continue
 
-			# Current course incomplete hai
-			# yahin ruk jao — aur kuch enroll mat karo
-			return
+            # Current course incomplete hai
+            # yahin ruk jao — aur kuch enroll mat karo
+            return
 
-		# Course enrolled nahi hai — isi ko enroll karo
-		try:
+        # Course enrolled nahi hai — isi ko enroll karo
+        try:
 
-			new_enrollment = frappe.new_doc(
-				"LMS Enrollment"
-			)
+            new_enrollment = frappe.new_doc(
+                "LMS Enrollment"
+            )
 
-			new_enrollment.member = user
-			new_enrollment.course = course
+            new_enrollment.member = user
+            new_enrollment.course = course
 
-			new_enrollment.insert(
-				ignore_permissions=True
-			)
+            new_enrollment.insert(
+                ignore_permissions=True
+            )
 
-			frappe.db.commit()
+            frappe.db.commit()
 
-		except Exception:
+        except Exception:
 
-			frappe.log_error(
-				frappe.get_traceback(),
-				f"Auto Enroll Failed: {user} - {course}"
-			)
+            frappe.log_error(
+                frappe.get_traceback(),
+                f"Auto Enroll Failed: {user} - {course}"
+            )
 
-		# Important:
-		# ek execution me sirf ek course enroll hoga
-		return
+        # Important:
+        # ek execution me sirf ek course enroll hoga
+        return
 
 
 def on_lms_enrollment_update(doc, method):
-	"""
-	Current course 100% complete hone par
-	next course automatically enroll karega.
-	"""
+    """
+    Current course 100% complete hone par
+    next course automatically enroll karega.
+    """
 
-	if (doc.progress or 0) >= 100:
-		auto_enroll_courses(
-			doc.member
-		)
+    if (doc.progress or 0) >= 100:
+        auto_enroll_courses(
+            doc.member
+        )
 
 
 def on_session_creation(login_manager):
-	"""
-	Login ke time eligible course enroll karo.
-	"""
+    """
+    Login ke time eligible course enroll karo.
+    """
 
-	auto_enroll_courses(
-		frappe.session.user
-	)
+    auto_enroll_courses(
+        frappe.session.user
+    )
 
 # SIMILAR_COURSE_ID = "similar-courses"
 @frappe.whitelist(allow_guest=True)
 def get_filtered_courses(
-	filters: dict = None,
-	start: int = 0,
-	limit_page_length: int | str = None,
-	**kwargs
+    filters: dict = None,
+    start: int = 0,
+    limit_page_length: int | str = None,
+    **kwargs
 ):
-	"""
-	Sirf assigned courses dikhayega (allowed_courses se match hone wale).
-	"""
+    """
+    Sirf assigned courses dikhayega (allowed_courses se match hone wale).
+    """
 
-	from lms.lms.utils import get_courses as original_get_courses
+    from lms.lms.utils import get_courses as original_get_courses
 
-	user = frappe.session.user
+    user = frappe.session.user
 
-	if user in ("Administrator", "Guest"):
-		return original_get_courses(
-			filters=filters,
-			start=start,
-			limit_page_length=limit_page_length
-		)
 
-	if "System Manager" in frappe.get_roles(user):
-		return original_get_courses(
-			filters=filters,
-			start=start,
-			limit_page_length=limit_page_length
-		)
+    if user in ("Administrator", "Guest"):
+        return original_get_courses(
+            filters=filters,
+            start=start,
+            limit_page_length=limit_page_length
+        )
 
-	department, designation, skills, goals = get_employee_dept_designation(
-		user
-	)
+    if "System Manager" in frappe.get_roles(user):
+        return original_get_courses(
+            filters=filters,
+            start=start,
+            limit_page_length=limit_page_length
+        )
 
-	allowed_courses = get_matched_courses(
-		department,
-		designation
-	)
+    department, designation, skills, goals = get_employee_dept_designation(
+        user
+    )
+
+    allowed_courses = get_matched_courses(
+        department,
+        designation
+    )
+
+    # frappe.throw(f"{allowed_courses}")
+
+    if not allowed_courses:
+        enrolled_courses = frappe.get_all(
+            "LMS Enrollment",
+            filters={"member": user},
+            pluck="course"
+        )
+
+        d = original_get_courses(
+            filters=filters,
+            start=start,
+            limit_page_length=limit_page_length
+        )
+
+        d = [row for row in d if row.name in enrolled_courses]
+
+        return d
+    
+    all_courses = original_get_courses(
+        filters=filters,
+        start=start,
+        limit_page_length=limit_page_length
+    )
+
+    
+    # frappe.throw(f"{all_courses}")
+    # Assigned courses
+    courses = [
+        course
+        for course in all_courses
+        if course.get("name") in allowed_courses
+    ]
  
-	# frappe.throw(f"{allowed_courses}")
-
-	if not allowed_courses:
-		return []
-
-	all_courses = original_get_courses(
-		filters=filters,
-		start=start,
-		limit_page_length=limit_page_length
-	)
-	# frappe.throw(f"{all_courses}")
-	# Assigned courses
-	courses = [
-		course
-		for course in all_courses
-		if course.get("name") in allowed_courses
-	]
- 
-	# ye line tab use hogi jab lms me koi courses auto assing hoga validate_enrolled_course_skills ye wali api se for their low score in skills kyuki ye direct insert hota
-	# lms enrollemnt me aur add nhi ho pata get_courses ke apis me kyuki vo courses ass rule se aaata h 
-
-	# courses me jo names already hain
-	existing_names = {c.get("name") for c in courses}
-
-	# user ke LMS Enrollment ke saare course names
-	enrolled_courses = frappe.get_all(
-		"LMS Enrollment",
-		filters={"member": user},
-		pluck="course"
-	)
-
-	# wo course names jo enrollment me hain lekin courses me nahi hain
-	missing_names = [c for c in set(enrolled_courses) if c not in existing_names]
-
-	# unke full course objects (all_courses me se)
-	get_all_lms_courses_not_in_courses = [
-		course
-		for course in all_courses
-		if course.get("name") in missing_names
-	]
-
-	# courses me add kar do
-	courses.extend(get_all_lms_courses_not_in_courses)
+    # ye line tab use hogi jab lms me koi courses auto assing hoga validate_enrolled_course_skills ye wali api se for their low score in skills kyuki ye direct insert hota
+    # lms enrollemnt me aur add nhi ho pata get_courses ke apis me kyuki vo courses ass rule se aaata h 
+    
+    # courses me jo names already hain
+    existing_names = {c.get("name") for c in courses}
 
 
-	return courses
+    for row in existing_names:
+        try:
+            enrollment = frappe.get_doc({
+                "doctype": "LMS Enrollment",
+                "course": row,
+                "member": user
+            })
+            enrollment.insert(ignore_permissions=True)
+            # frappe.throw(f"kjhgfghjkl{enrollment}")
+
+            frappe.msgprint("Enrolled: " + enrollment.name)
+
+        except Exception as e:
+            # frappe.throw(f"kjhgfghjkl{e}")
+            frappe.log_error(
+                title="LMS Enrollment insert failed",
+                message=str(e)
+            )
+
+    # user ke LMS Enrollment ke saare course names
+    enrolled_courses = frappe.get_all(
+        "LMS Enrollment",
+        filters={"member": user},
+        pluck="course"
+    )
+
+    # wo course names jo enrollment me hain lekin courses me nahi hain
+    missing_names = [c for c in set(enrolled_courses) if c not in existing_names]
+    
+    # unke full course objects (all_courses me se)
+    get_all_lms_courses_not_in_courses = [
+        course
+        for course in all_courses
+        if course.get("name") in missing_names
+    ]
+
+    # courses me add kar do
+    courses.extend(get_all_lms_courses_not_in_courses)
+
+    return courses
 
 
 @frappe.whitelist()
 def check_course_access_api(course):
-	"""
-	Frontend se course access check karne ke liye API.
-	"""
+    """
+    Frontend se course access check karne ke liye API.
+    """
 
-	user = frappe.session.user
+    user = frappe.session.user
 
-	check_course_access(
-		user,
-		course
-	)
+    check_course_access(
+        user,
+        course
+    )
 
-	return {
-		"allowed": True,
-		"course": course
-	}
+    return {
+        "allowed": True,
+        "course": course
+    }
 
 
 @frappe.whitelist()
 def get_course_lock_status_api(course):
-	"""
-	Frontend ko locked/unlocked status deta hai.
-	"""
+    """
+    Frontend ko locked/unlocked status deta hai.
+    """
 
-	user = frappe.session.user
+    user = frappe.session.user
 
-	locked = get_course_lock_status(
-		user,
-		course
-	)
+    locked = get_course_lock_status(
+        user,
+        course
+    )
 
-	return {
-		"course": course,
-		"locked": locked,
-		"allowed": not locked
-	}
+    return {
+        "course": course,
+        "locked": locked,
+        "allowed": not locked
+    }
 
 
 @frappe.whitelist()
 def get_my_course_status():
-	"""
-	Assigned courses ke saath progress aur lock status return karega.
-	Frontend ke liye useful hai.
-	"""
+    """
+    Assigned courses ke saath progress aur lock status return karega.
+    Frontend ke liye useful hai.
+    """
 
-	user = frappe.session.user
+    user = frappe.session.user
 
-	if user in ("Administrator", "Guest"):
-		return []
+    if user in ("Administrator", "Guest"):
+        return []
 
-	ordered_courses = get_user_ordered_courses(
-		user
-	)
+    ordered_courses = get_user_ordered_courses(
+        user
+    )
 
-	result = []
+    result = []
 
-	for index, course in enumerate(ordered_courses):
+    for index, course in enumerate(ordered_courses):
 
-		progress = get_course_progress(
-			user,
-			course
-		)
+        progress = get_course_progress(
+            user,
+            course
+        )
 
-		enrollment = frappe.db.get_value(
-			"LMS Enrollment",
-			{
-				"member": user,
-				"course": course
-			},
-			"name"
-		)
+        enrollment = frappe.db.get_value(
+            "LMS Enrollment",
+            {
+                "member": user,
+                "course": course
+            },
+            "name"
+        )
 
-		locked = get_course_lock_status(
-			user,
-			course
-		)
+        locked = get_course_lock_status(
+            user,
+            course
+        )
 
-		course_title = frappe.db.get_value(
-			"LMS Course",
-			course,
-			"title"
-		)
+        course_title = frappe.db.get_value(
+            "LMS Course",
+            course,
+            "title"
+        )
 
-		result.append(
-			{
-				"course": course,
-				"course_title": course_title,
-				"order": index + 1,
-				"progress": progress,
-				"enrolled": bool(enrollment),
-				"locked": locked,
-				"allowed": not locked
-			}
-		)
+        result.append(
+            {
+                "course": course,
+                "course_title": course_title,
+                "order": index + 1,
+                "progress": progress,
+                "enrolled": bool(enrollment),
+                "locked": locked,
+                "allowed": not locked
+            }
+        )
 
-	return result
+    return result
 
 
 @frappe.whitelist(allow_guest=True)
 def get_employee_lms_data(user: str | None = None):
-	"""
-	User ke LMS Enrollment + Quiz data.
-	"""
+    """
+    User ke LMS Enrollment + Quiz data.
+    """
  
-	department, designation, skills, goals = get_employee_dept_designation(
-		user
-	)
+    department, designation, skills, goals = get_employee_dept_designation(
+        user
+    )
  
-	# frappe.throw(f"{department, designation, skills, goals}")
+    # frappe.throw(f"{department, designation, skills, goals}")
 
-	user = user or frappe.session.user
+    user = user or frappe.session.user
 
-	enrollments = frappe.get_all(
-		"LMS Enrollment",
-		filters={
-			"member": user
-		},
-		fields=[
-			"name",
-			"course",
-			"progress",
-			"creation"
-		],
-		order_by="creation asc"
-	)
+    enrollments = frappe.get_all(
+        "LMS Enrollment",
+        filters={
+            "member": user
+        },
+        fields=[
+            "name",
+            "course",
+            "progress",
+            "creation"
+        ],
+        order_by="creation asc"
+    )
 
-	result = []
+    result = []
 
-	for enrollment in enrollments:
+    for enrollment in enrollments:
 
-		course = enrollment.course
+        course = enrollment.course
 
-		course_title = frappe.db.get_value(
-			"LMS Course",
-			course,
-			"title"
-		)
+        course_title = frappe.db.get_value(
+            "LMS Course",
+            course,
+            "title"
+        )
 
-		quiz_ids = []
+        quiz_ids = []
 
-		lessons = frappe.get_all(
-			"Course Lesson",
-			filters={
-				"course": course
-			},
-			fields=[
-				"name",
-				"content"
-			]
-		)
+        lessons = frappe.get_all(
+            "Course Lesson",
+            filters={
+                "course": course
+            },
+            fields=[
+                "name",
+                "content"
+            ]
+        )
 
-		for lesson in lessons:
+        for lesson in lessons:
 
-			if not lesson.content:
-				continue
+            if not lesson.content:
+                continue
 
-			try:
+            try:
 
-				content = json.loads(
-					lesson.content
-				)
+                content = json.loads(
+                    lesson.content
+                )
 
-				for block in content.get(
-					"blocks",
-					[]
-				):
+                for block in content.get(
+                    "blocks",
+                    []
+                ):
 
-					if block.get("type") == "quiz":
+                    if block.get("type") == "quiz":
 
-						quiz_id = block.get(
-							"data",
-							{}
-						).get("quiz")
+                        quiz_id = block.get(
+                            "data",
+                            {}
+                        ).get("quiz")
 
-						if (
-							quiz_id
-							and quiz_id not in quiz_ids
-						):
-							quiz_ids.append(
-								quiz_id
-							)
+                        if (
+                            quiz_id
+                            and quiz_id not in quiz_ids
+                        ):
+                            quiz_ids.append(
+                                quiz_id
+                            )
 
-			except Exception:
-				continue
+            except Exception:
+                continue
 
-		quiz_results = []
+        quiz_results = []
 
-		for quiz_id in quiz_ids:
+        for quiz_id in quiz_ids:
 
-			quiz = frappe.db.get_value(
-				"LMS Quiz",
-				quiz_id,
-				[
-					"name",
-					"title"
-				],
-				as_dict=True
-			)
+            quiz = frappe.db.get_value(
+                "LMS Quiz",
+                quiz_id,
+                [
+                    "name",
+                    "title"
+                ],
+                as_dict=True
+            )
 
-			if not quiz:
-				continue
+            if not quiz:
+                continue
 
-			submission = frappe.db.get_value(
-				"LMS Quiz Submission",
-				{
-					"member": user,
-					"quiz": quiz.name
-				},
-				[
-					"name",
-					"score",
-					"percentage",
-					"creation"
-				],
-				as_dict=True
-			)
+            submission = frappe.db.get_value(
+                "LMS Quiz Submission",
+                {
+                    "member": user,
+                    "quiz": quiz.name
+                },
+                [
+                    "name",
+                    "score",
+                    "percentage",
+                    "creation"
+                ],
+                as_dict=True
+            )
 
-			quiz_results.append(
-				{
-					"quiz": quiz.name,
-					"quiz_title": quiz.title,
-					"attempted": bool(
-						submission
-					),
-					"score": (
-						submission.score
-						if submission
-						else None
-					),
-					"percentage": (
-						submission.percentage
-						if submission
-						else None
-					),
-					"submitted_on": (
-						str(
-							submission.creation
-						)
-						if submission
-						else None
-					)
-				}
-			)
+            quiz_results.append(
+                {
+                    "quiz": quiz.name,
+                    "quiz_title": quiz.title,
+                    "attempted": bool(
+                        submission
+                    ),
+                    "score": (
+                        submission.score
+                        if submission
+                        else None
+                    ),
+                    "percentage": (
+                        submission.percentage
+                        if submission
+                        else None
+                    ),
+                    "submitted_on": (
+                        str(
+                            submission.creation
+                        )
+                        if submission
+                        else None
+                    )
+                }
+            )
 
-		attempted_scores = [
-			q["percentage"]
-			for q in quiz_results
-			if q["percentage"] is not None
-		]
+        attempted_scores = [
+            q["percentage"]
+            for q in quiz_results
+            if q["percentage"] is not None
+        ]
 
-		avg_quiz_pct = (
-			round(
-				sum(attempted_scores)
-				/ len(attempted_scores),
-				1
-			)
-			if attempted_scores
-			else None
-		)
+        avg_quiz_pct = (
+            round(
+                sum(attempted_scores)
+                / len(attempted_scores),
+                1
+            )
+            if attempted_scores
+            else None
+        )
 
-		result.append(
-			{
-				"course": course,
-				"course_title": course_title,
-				"progress": enrollment.progress or 0,
-				"enrolled_on": str(
-					enrollment.creation
-				),
-				"quizzes": quiz_results,
-				"avg_quiz_percentage": avg_quiz_pct
-			}
-		)
+        result.append(
+            {
+                "course": course,
+                "course_title": course_title,
+                "progress": enrollment.progress or 0,
+                "enrolled_on": str(
+                    enrollment.creation
+                ),
+                "quizzes": quiz_results,
+                "avg_quiz_percentage": avg_quiz_pct
+            }
+        )
 
-	return {
-		"user": user,
-		"department": department,
-		"skills":skills,
-		"goals":goals,
-		"designation": designation,
-		"courses": result
-	}
+    return {
+        "user": user,
+        "department": department,
+        "skills":skills,
+        "goals":goals,
+        "designation": designation,
+        "courses": result
+    }
 
 
 @frappe.whitelist()
 def enroll_in_course(course):
-	"""
-	User manually kisi course ko enroll karne ki try kare
-	to pehle sequence validation hogi — sirf sahi "next" course
-	hi enroll ho sakta hai, order todkar nahi.
-	"""
+    """
+    User manually kisi course ko enroll karne ki try kare
+    to pehle sequence validation hogi — sirf sahi "next" course
+    hi enroll ho sakta hai, order todkar nahi.
+    """
 
-	user = frappe.session.user
+    user = frappe.session.user
 
-	if user in ("Administrator", "Guest"):
-		frappe.throw("Invalid user.")
+    if user in ("Administrator", "Guest"):
+        frappe.throw("Invalid user.")
 
-	if "System Manager" not in frappe.get_roles(user):
-		# Ye khud throw kar dega agar sequence galat ho
-		check_course_access(user, course)
+    if "System Manager" not in frappe.get_roles(user):
+        # Ye khud throw kar dega agar sequence galat ho
+        check_course_access(user, course)
 
-	existing = frappe.db.exists(
-		"LMS Enrollment",
-		{
-			"member": user,
-			"course": course
-		}
-	)
+    existing = frappe.db.exists(
+        "LMS Enrollment",
+        {
+            "member": user,
+            "course": course
+        }
+    )
 
-	if existing:
-		return {
-			"success": True,
-			"message": "Already enrolled.",
-			"enrollment": existing
-		}
+    if existing:
+        return {
+            "success": True,
+            "message": "Already enrolled.",
+            "enrollment": existing
+        }
 
-	try:
+    try:
 
-		enrollment = frappe.new_doc(
-			"LMS Enrollment"
-		)
+        enrollment = frappe.new_doc(
+            "LMS Enrollment"
+        )
 
-		enrollment.member = user
-		enrollment.course = course
+        enrollment.member = user
+        enrollment.course = course
 
-		enrollment.insert(
-			ignore_permissions=True
-		)
+        enrollment.insert(
+            ignore_permissions=True
+        )
 
-		frappe.db.commit()
+        frappe.db.commit()
 
-		return {
-			"success": True,
-			"message": "Course enrolled successfully.",
-			"enrollment": enrollment.name
-		}
+        return {
+            "success": True,
+            "message": "Course enrolled successfully.",
+            "enrollment": enrollment.name
+        }
 
-	except Exception:
+    except Exception:
 
-		frappe.log_error(
-			frappe.get_traceback(),
-			f"Manual Course Enrollment Failed: {user} - {course}"
-		)
+        frappe.log_error(
+            frappe.get_traceback(),
+            f"Manual Course Enrollment Failed: {user} - {course}"
+        )
 
-		frappe.throw(
-			"Unable to enroll in course."
-		)
+        frappe.throw(
+            "Unable to enroll in course."
+        )
   
 import json
 import frappe
@@ -1381,260 +1417,260 @@ COURSE_SKILLS_FIELD = "custom_course_skills"
 
 
 def _skill_names(skills) -> set:
-	"""Normalize skills (list of dicts or strings) into a set of lowercase names."""
-	names = set()
-	for s in skills or []:
-		name = s.get("skill") if isinstance(s, dict) else s
-		if name:
-			names.add(str(name).strip().lower())
-	return names
+    """Normalize skills (list of dicts or strings) into a set of lowercase names."""
+    names = set()
+    for s in skills or []:
+        name = s.get("skill") if isinstance(s, dict) else s
+        if name:
+            names.add(str(name).strip().lower())
+    return names
 
 
 @frappe.whitelist()
 def get_similar_courses():
-	"""Return LMS courses whose skills match the skills of the session user's designation."""
+    """Return LMS courses whose skills match the skills of the session user's designation."""
 
-	user = frappe.session.user
+    user = frappe.session.user
 
-	try:
-		# 1. Skills of the user, from the HRMS API
-		department, designation, skills, goals = get_employee_dept_designation(user)
-		user_skills = _skill_names(skills)
+    try:
+        # 1. Skills of the user, from the HRMS API
+        department, designation, skills, goals = get_employee_dept_designation(user)
+        user_skills = _skill_names(skills)
 
-		# frappe.throw(str(user_skills))
+        # frappe.throw(str(user_skills))
 
-		if not user_skills:
-			return []
+        if not user_skills:
+            return []
 
-		# 2. All courses from the LMS API
-		params = inspect.signature(get_courses).parameters
+        # 2. All courses from the LMS API
+        params = inspect.signature(get_courses).parameters
 
-		# frappe.throw(str(params))
+        # frappe.throw(str(params))
 
-		kwargs = {}
+        kwargs = {}
 
-		if "filters" in params:
-			kwargs["filters"] = {}
+        if "filters" in params:
+            kwargs["filters"] = {}
 
-		if "start" in params:
-			kwargs["start"] = 0
+        if "start" in params:
+            kwargs["start"] = 0
 
-		if "page_length" in params:
-			kwargs["page_length"] = 1000
+        if "page_length" in params:
+            kwargs["page_length"] = 1000
 
-		courses = get_courses(**kwargs) or []
+        courses = get_courses(**kwargs) or []
 
-		if not courses:
-			return []
+        if not courses:
+            return []
 
-		# 2b. Remove the courses the user is already enrolled in
-		enrolled_courses = set(
-			frappe.get_all(
-				"LMS Enrollment",
-				filters={"member": user},
-				pluck="course",
-			)
-		)
+        # 2b. Remove the courses the user is already enrolled in
+        enrolled_courses = set(
+            frappe.get_all(
+                "LMS Enrollment",
+                filters={"member": user},
+                pluck="course",
+            )
+        )
   
-		# frappe.throw(f"{enrolled_courses, user}")
+        # frappe.throw(f"{enrolled_courses, user}")
 
-		courses = [
-			c
-			for c in courses
-			if c.get("name") not in enrolled_courses
-		]
+        courses = [
+            c
+            for c in courses
+            if c.get("name") not in enrolled_courses
+        ]
 
-		if not courses:
-			return []
+        if not courses:
+            return []
 
-		# 3. Child doctype and skill field
-		table_field = frappe.get_meta("LMS Course").get_field(
-			COURSE_SKILLS_FIELD
-		)
+        # 3. Child doctype and skill field
+        table_field = frappe.get_meta("LMS Course").get_field(
+            COURSE_SKILLS_FIELD
+        )
 
-		# frappe.throw(str(table_field))
+        # frappe.throw(str(table_field))
 
-		if not table_field:
-			frappe.throw(
-				f"LMS Course has no field named '{COURSE_SKILLS_FIELD}'"
-			)
+        if not table_field:
+            frappe.throw(
+                f"LMS Course has no field named '{COURSE_SKILLS_FIELD}'"
+            )
 
-		child_doctype = table_field.options
-		child_meta = frappe.get_meta(child_doctype)
+        child_doctype = table_field.options
+        child_meta = frappe.get_meta(child_doctype)
 
-		skill_field = None
+        skill_field = None
 
-		for f in child_meta.fields:
-			if f.fieldtype == "Link" and f.options == "Skill":
-				skill_field = f.fieldname
-				break
+        for f in child_meta.fields:
+            if f.fieldtype == "Link" and f.options == "Skill":
+                skill_field = f.fieldname
+                break
 
-		if not skill_field:
-			for f in child_meta.fields:
-				if f.fieldname == "skill":
-					skill_field = f.fieldname
-					break
+        if not skill_field:
+            for f in child_meta.fields:
+                if f.fieldname == "skill":
+                    skill_field = f.fieldname
+                    break
 
-		if not skill_field:
-			for f in child_meta.fields:
-				if f.fieldtype in ("Link", "Data"):
-					skill_field = f.fieldname
-					break
+        if not skill_field:
+            for f in child_meta.fields:
+                if f.fieldtype in ("Link", "Data"):
+                    skill_field = f.fieldname
+                    break
 
-		if not skill_field:
-			frappe.throw(
-				f"Skill field not found in {child_doctype}"
-			)
+        if not skill_field:
+            frappe.throw(
+                f"Skill field not found in {child_doctype}"
+            )
 
-		# 4. Fetch the skills of all courses in one query
-		course_names = [
-			c.get("name")
-			for c in courses
-			if c.get("name")
-		]
+        # 4. Fetch the skills of all courses in one query
+        course_names = [
+            c.get("name")
+            for c in courses
+            if c.get("name")
+        ]
 
-		# frappe.throw(f"{course_names}")
+        # frappe.throw(f"{course_names}")
 
-		if not course_names:
-			return []
+        if not course_names:
+            return []
 
-		rows = frappe.get_all(
-			child_doctype,
-			filters={
-				"parent": ["in", course_names],
-				"parenttype": "LMS Course",
-				"parentfield": COURSE_SKILLS_FIELD,
-			},
-			fields=[
-				"parent",
-				skill_field,
-			],                                                                                                                                                                 
-		)
+        rows = frappe.get_all(
+            child_doctype,
+            filters={
+                "parent": ["in", course_names],
+                "parenttype": "LMS Course",
+                "parentfield": COURSE_SKILLS_FIELD,
+            },
+            fields=[
+                "parent",
+                skill_field,
+            ],                                                                                                                                                                 
+        )
 
-		# frappe.throw(f"{rows}")
+        # frappe.throw(f"{rows}")
 
-		course_skills = {}
+        course_skills = {}
 
-		for r in rows:
-			value = r.get(skill_field)
+        for r in rows:
+            value = r.get(skill_field)
 
-			if value:
-				course_skills.setdefault(
-					r.parent,
-					set()
-				).add(
-					str(value).strip().lower()
-				)
+            if value:
+                course_skills.setdefault(
+                    r.parent,
+                    set()
+                ).add(
+                    str(value).strip().lower()
+                )
 
-		# 5. Match user skills with course skills
-		result = []
+        # 5. Match user skills with course skills
+        result = []
 
-		for c in courses:
+        for c in courses:
 
-			matched = (
-				user_skills
-				& course_skills.get(
-					c.get("name"),
-					set()
-				)
-			)
+            matched = (
+                user_skills
+                & course_skills.get(
+                    c.get("name"),
+                    set()
+                )
+            )
 
-			if matched:
-				c["matched_skills"] = sorted(matched)
-				c["match_count"] = len(matched)
-				result.append(c)
+            if matched:
+                c["matched_skills"] = sorted(matched)
+                c["match_count"] = len(matched)
+                result.append(c)
 
-		# Sort by best matchsa
-		result.sort(
-			key=lambda c: c["match_count"],
-			reverse=True
-		)
+        # Sort by best matchsa
+        result.sort(
+            key=lambda c: c["match_count"],
+            reverse=True
+        )
   
-		# frappe.throw(f"{result}")
+        # frappe.throw(f"{result}")
 
-		return result
+        return result
 
-	except Exception:
-		frappe.log_error(
-			title="get_similar_courses failed",
-			message=frappe.get_traceback(),
-		)
+    except Exception:
+        frappe.log_error(
+            title="get_similar_courses failed",
+            message=frappe.get_traceback(),
+        )
 
-		frappe.throw(
-			frappe.get_traceback()
-		)
+        frappe.throw(
+            frappe.get_traceback()
+        )
 
 
 def build_similar_courses_table(courses) -> str:
-	max_count = max(
-		(c.get("match_count") or 1) for c in courses
-	) if courses else 1
+    max_count = max(
+        (c.get("match_count") or 1) for c in courses
+    ) if courses else 1
 
-	body = ""
+    body = ""
 
-	for c in courses:
-		name = frappe.utils.escape_html(c.get("name") or "")
-		title = frappe.utils.escape_html(
-			c.get("title") or c.get("name") or ""
-		)
+    for c in courses:
+        name = frappe.utils.escape_html(c.get("name") or "")
+        title = frappe.utils.escape_html(
+            c.get("title") or c.get("name") or ""
+        )
 
-		skills = ", ".join(
-			frappe.utils.escape_html(s)
-			for s in c.get("matched_skills", [])
-		)
+        skills = ", ".join(
+            frappe.utils.escape_html(s)
+            for s in c.get("matched_skills", [])
+        )
 
-		count = c.get("match_count") or 1
-		percent = round(count / max_count * 100)
+        count = c.get("match_count") or 1
+        percent = round(count / max_count * 100)
 
-		bar_html = (
-			'<div style="background:rgba(128,128,128,.25);'
-			'border-radius:999px;height:6px;width:100%;min-width:80px;">'
-			f'<div style="background:#22c55e;height:6px;'
-			f'border-radius:999px;width:{percent}%;"></div>'
-			"</div>"
-		)
+        bar_html = (
+            '<div style="background:rgba(128,128,128,.25);'
+            'border-radius:999px;height:6px;width:100%;min-width:80px;">'
+            f'<div style="background:#22c55e;height:6px;'
+            f'border-radius:999px;width:{percent}%;"></div>'
+            "</div>"
+        )
 
-		body += (
-			"<tr>"
-			f'<td style="padding:10px 12px;'
-			f'border-bottom:1px solid rgba(128,128,128,.25);">'
-			f'<a href="/lms/courses/{name}" '
-			f'style="text-decoration:none;">{title}</a></td>'
+        body += (
+            "<tr>"
+            f'<td style="padding:10px 12px;'
+            f'border-bottom:1px solid rgba(128,128,128,.25);">'
+            f'<a href="/lms/courses/{name}" '
+            f'style="text-decoration:none;">{title}</a></td>'
 
-			f'<td style="padding:10px 12px;'
-			f'border-bottom:1px solid rgba(128,128,128,.25);">'
-			f"{skills}</td>"
+            f'<td style="padding:10px 12px;'
+            f'border-bottom:1px solid rgba(128,128,128,.25);">'
+            f"{skills}</td>"
 
-			f'<td style="padding:10px 12px;'
-			f'border-bottom:1px solid rgba(128,128,128,.25);width:30%;">'
-			f"{bar_html}</td>"
+            f'<td style="padding:10px 12px;'
+            f'border-bottom:1px solid rgba(128,128,128,.25);width:30%;">'
+            f"{bar_html}</td>"
 
-			"</tr>"
-		)
+            "</tr>"
+        )
 
-	return (
-		'<h3 style="margin-top:24px;">Similar Courses</h3>'
-		'<table style="width:100%;border-collapse:collapse;margin-top:8px;'
-		'border:1px solid rgba(128,128,128,.25);border-radius:8px;">'
+    return (
+        '<h3 style="margin-top:24px;">Similar Courses</h3>'
+        '<table style="width:100%;border-collapse:collapse;margin-top:8px;'
+        'border:1px solid rgba(128,128,128,.25);border-radius:8px;">'
 
-		"<thead><tr>"
-		'<th style="text-align:left;padding:10px 12px;'
-		'border-bottom:1px solid rgba(128,128,128,.4);">'
-		"Course</th>"
+        "<thead><tr>"
+        '<th style="text-align:left;padding:10px 12px;'
+        'border-bottom:1px solid rgba(128,128,128,.4);">'
+        "Course</th>"
 
-		'<th style="text-align:left;padding:10px 12px;'
-		'border-bottom:1px solid rgba(128,128,128,.4);">'
-		"Matching Skills</th>"
+        '<th style="text-align:left;padding:10px 12px;'
+        'border-bottom:1px solid rgba(128,128,128,.4);">'
+        "Matching Skills</th>"
 
-		'<th style="text-align:left;padding:10px 12px;'
-		'border-bottom:1px solid rgba(128,128,128,.4);">'
-		"Match</th>"
+        '<th style="text-align:left;padding:10px 12px;'
+        'border-bottom:1px solid rgba(128,128,128,.4);">'
+        "Match</th>"
 
-		"</tr></thead>"
+        "</tr></thead>"
 
-		f"<tbody>{body}</tbody>"
-		"</table>"
-	)
+        f"<tbody>{body}</tbody>"
+        "</table>"
+    )
  
  
  
@@ -1643,66 +1679,64 @@ import frappe
 LINK_ID = "similar-courses-link"
 
 LINK_HTML = (
-	f'<a id="{LINK_ID}" href="/similar-courses" '
-	'style="position:fixed;top:9px;right:20px;z-index:9999;'
-	'padding:6px 14px;border-radius:6px;'
-	'border:1px solid rgba(128,128,128,.4);'
-	'background:rgba(128,128,128,.18);color:inherit;'
-	'font-size:13px;font-weight:600;text-decoration:none;">'
-	'Similar Courses &rarr;</a>'
+    f'<a id="{LINK_ID}" href="/similar-courses" '
+    'style="position:fixed;top:9px;right:20px;z-index:9999;'
+    'padding:6px 14px;border-radius:6px;'
+    'border:1px solid rgba(128,128,128,.4);'
+    'background:rgba(128,128,128,.18);color:inherit;'
+    'font-size:13px;font-weight:600;text-decoration:none;">'
+    'Similar Courses &rarr;</a>'
 )
 
 
 def add_link(response=None, request=None, **kwargs):
-	try:
-		if response is None or request is None:
-			return
+    try:
+        if response is None or request is None:
+            return
 
-		path = request.path or ""
+        path = request.path or ""
 
-		if not path.startswith("/lms"):
-			return
+        if not path.startswith("/lms"):
+            return
 
-		if response.status_code != 200:
-			return
+        if response.status_code != 200:
+            return
 
-		if response.mimetype != "text/html":
-			return
+        if response.mimetype != "text/html":
+            return
 
-		if getattr(response, "direct_passthrough", False):
-			return
+        if getattr(response, "direct_passthrough", False):
+            return
 
-		html = response.get_data(as_text=True)
+        html = response.get_data(as_text=True)
 
-		if "</body>" not in html:
-			return
+        if "</body>" not in html:
+            return
 
-		if LINK_ID in html:
-			return
+        if LINK_ID in html:
+            return
 
-		response.set_data(
-			html.replace(
-				"</body>",
-				LINK_HTML + "</body>",
-				1
-			)
-		)
+        response.set_data(
+            html.replace(
+                "</body>",
+                LINK_HTML + "</body>",
+                1
+            )
+        )
 
-	except Exception:
-		frappe.log_error(
-			title="Similar courses link inject failed",
-			message=frappe.get_traceback(),
-		)
+    except Exception:
+        frappe.log_error(
+            title="Similar courses link inject failed",
+            message=frappe.get_traceback(),
+        )
   
-  
-  
-  
+
   
 import frappe
 from frappe import _
 from frappe.utils import flt, get_url_to_form
 
-DEFAULT_THRESHOLD = 40  # percent: a goal score below this triggers a Performance Improvement Plan
+# DEFAULT_THRESHOLD = 40  # percent: a goal score below this triggers a Performance Improvement Plan
 
 
 import requests
@@ -1840,44 +1874,41 @@ def calculate_goal_score(user_id: str | None = None) -> dict:
             "message": "An error occurred while calculating the goal score.",
         }
 
-def create_pip_and_notify(user, employee_name, score_percent, threshold, appraisal_cycle):
-	"""Trigger: create the Performance Improvement Plan and mail the employee."""
-	marker = f"[Auto PIP: {appraisal_cycle}]"
+# def create_pip_and_notify(user, employee_name, score_percent, threshold, appraisal_cycle):
+#     """Trigger: create the Performance Improvement Plan and mail the employee."""
+#     marker = f"[Auto PIP: {appraisal_cycle}]"
 
-	# One automatic PIP per employee per cycle
-	existing = frappe.db.exists(
-		"Performance Improvement Plan",
-		{
-			"employee_id": user,
-			"docstatus": ["<", 2],
-			"reason": ["like", f"%{marker}%"],
-		},
-	)
-	if existing:
-		return {"pip": existing, "created": False, "mail_sent": False}
+#     # One automatic PIP per employee per cycle
+#     existing = frappe.db.exists(
+#         "Performance Improvement Plan",
+#         {
+#             "employee_id": user,
+#             "docstatus": ["<", 2],
+#             "reason": ["like", f"%{marker}%"],
+#         },
+#     )
+#     if existing:
+#         return {"pip": existing, "created": False, "mail_sent": False}
 
-	pip = frappe.get_doc({
-		"doctype": "Performance Improvement Plan",
-		"employee_id": user,
-		"employee_name": employee_name,
-		"reason": (
-			f"{marker} Goal score is {score_percent}%, below the required {threshold}% "
-			f"for the appraisal cycle {appraisal_cycle}."
-		),
-	})
-	pip.insert(ignore_permissions=True)
+#     pip = frappe.get_doc({
+#         "doctype": "Performance Improvement Plan",
+#         "employee_id": user,
+#         "employee_name": employee_name,
+#         "reason": (
+#             f"{marker} Goal score is {score_percent}%, below the required {threshold}% "
+#             f"for the appraisal cycle {appraisal_cycle}."
+#         ),
+#     })
+#     pip.insert(ignore_permissions=True)
 
-	if SUBMIT_PIP:
-		pip.submit()
+#     if SUBMIT_PIP:
+#         pip.submit()
 
-	mail_sent = send_pip_mail(
-		user, employee_name, score_percent, threshold, appraisal_cycle, pip.name
-	)
+#     mail_sent = send_pip_mail(
+#         user, employee_name, score_percent, threshold, appraisal_cycle, pip.name
+#     )
 
-	return {"pip": pip.name, "created": True, "mail_sent": mail_sent}
-
-
-# muje User doc use krna h Employee nhi use krna h
+#     return {"pip": pip.name, "created": True, "mail_sent": mail_sent}
 
 
 
@@ -1892,7 +1923,6 @@ import requests
 SKILLS_GRADE_API = (
     "http://ec2-13-234-27-130.ap-south-1.compute.amazonaws.com:8001/api/method/get_user_skills_grade_for_lms"
 )
-
 
 
 @frappe.whitelist(allow_guest=True)
@@ -2022,17 +2052,30 @@ def validate_enrolled_course_skills(user: str | None = None):
             
     # frappe.throw(f"{user_rating}")
     # 4. Enroll the user in the matching course, if not already enrolled
-    if matched_courses:
-        
-        data = get_similar_courses()
 
-        if data:
+   
+    if matched_courses:
+
+        
+        # data = get_similar_courses()
+
+        # if data:
             
-            for matched_course in matched_courses:
+        for matched_course in matched_courses:
+
+                # if matched_course.get("course") == data[0].name and matched_course.get("has_low_scores") is True:
+            if matched_course.get("has_low_scores") is True:
                 
-                if matched_course.get("course") == data[0].name and matched_course.get("has_low_scores") is False:
+                    # frappe.throw(f"{matched_course}")
+
+                    # frappe.log_error(
+                    #     title="User Skill Ratings Debug",
+                    #     message=frappe.as_json(matched_course)
+                    # )
                     
                     course_name = matched_course.get("course")
+
+                    
 
                     # Avoid duplicate enrollment
                     if not frappe.db.exists(
@@ -2050,7 +2093,22 @@ def validate_enrolled_course_skills(user: str | None = None):
                         })
 
                         enrollment.insert(ignore_permissions=True)
+                        frappe.db.commit()
+                        # frappe.log_error(
+                        #         title="Enrollment Inserted",
+                        #         message=frappe.as_json({
+                        #             "name": enrollment.name,
+                        #             "member": enrollment.member,
+                        #             "course": enrollment.course,
+                        #             "docstatus": enrollment.docstatus
+                        #         })
+                        #     )
 
+            else:
+                frappe.log_error(
+                    title="User Skill Ratings Debug",
+                    message="HERRE"
+                )
     return {
         "success": True,
         "user": user,
@@ -2063,3 +2121,34 @@ def validate_enrolled_course_skills(user: str | None = None):
         "matched_courses": matched_courses,
         "message": "Courses matched with API skills successfully.",
     }
+
+
+
+def _is_score_card_admin():
+    roles = frappe.get_roles()
+    return "System Manager" in roles or "Administrator" in roles
+ 
+ 
+@frappe.whitelist()
+def get_employee_lms_data_for_user(user_id=None):
+    """
+    No user_id (or your own user_id)  -> your own data, same as before.
+    Another user's user_id            -> allowed only for admins.
+    """
+    logged_in_user = frappe.session.user
+ 
+    # Normal case: own data
+    if not user_id or user_id == logged_in_user:
+        return get_employee_lms_data()
+ 
+    # Someone else's data: admins only
+    if not _is_score_card_admin():
+        frappe.throw("Not permitted", frappe.PermissionError)
+ 
+    # Run the existing function as the selected user, then switch back
+    frappe.set_user(user_id)
+    try:
+        return get_employee_lms_data()
+    finally:
+        frappe.set_user(logged_in_user)
+ 
