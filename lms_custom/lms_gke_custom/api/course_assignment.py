@@ -1996,6 +1996,8 @@ def validate_enrolled_course_skills(user: str | None = None):
                 or course_skill.get("skill")
                 or course_skill.get("skill_name")
             )
+            
+            # frappe.throw(f"{course_skill}")
 
             required_rating = (
                 course_skill.get("rating")
@@ -2121,7 +2123,6 @@ def validate_enrolled_course_skills(user: str | None = None):
         "matched_courses": matched_courses,
         "message": "Courses matched with API skills successfully.",
     }
-
 
 
 def _is_score_card_admin():

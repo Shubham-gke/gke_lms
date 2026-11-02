@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Score Card - All Users</title>
+
+<style>
+:root {
+  --bg: #141414;
+  --card: #1d1d1d;
+  --border: #343434;
+  --text: #f5f5f5;
+  --muted: #aaa;
+  --blue: #60a5fa;
+  --red: #f87171;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 18px; background: var(--bg); color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+.card {
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--card); overflow: hidden;
+}
+.head {
+  padding: 20px 22px; display: flex; flex-wrap: wrap;
+  gap: 14px; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.title { font-size: 20px; font-weight: 700; }
+.sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
+.search {
+  width: 280px; max-width: 100%; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--border); background: #252525; color: var(--text);
+  font-size: 13px;
+}
+.search:focus { outline: none; border-color: var(--blue); }
+.table-wrap { width: 100%; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; color: var(--muted); background: #282828;
+  font-size: 11px; text-transform: uppercase; white-space: nowrap;
+}
+th, td { padding: 12px 16px; border-bottom: 1px solid #353535; }
+tbody tr:hover td { background: #232323; }
+.user-name { font-weight: 700; }
+.user-mail { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.bar {
+  display: inline-block; width: 70px; height: 6px; background: #444;
+  border-radius: 5px; overflow: hidden; vertical-align: middle; margin-right: 6px;
+}
+.bar span { display: block; height: 100%; background: var(--blue); }
+.btn {
+  display: inline-block; padding: 8px 14px; border-radius: 8px;
+  background: #f5f5f5; color: #111; font-size: 12px; font-weight: 700;
+  text-decoration: none; white-space: nowrap;
+}
+.btn:hover { background: #fff; }
+.state { padding: 36px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+.state.error { color: var(--red); }
+</style>
+</head>
+
+<body>
+<div class="card">
+  <div class="head">
+    <div>
+      <div class="title">Score Card - All Users</div>
+      <div class="sub" id="countText">Users enrolled in LMS courses</div>
+    </div>
+    <input class="search" id="search" type="search" placeholder="Search name or email...">
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>User</th>
+          <th>Courses</th>
+          <th>Completed</th>
+          <th>Avg Progress</th>
+          <th>Score Card</th>
+        </tr>
+      </thead>
+      <tbody id="userBody"></tbody>
+    </table>
+  </div>
+
+  <div class="state" id="state">Loading users...</div>
+</div>
+
+<script>
+"use strict";
+
+const USERS_API =
+  "/api/method/lms_custom.lms_gke_custom.api.score_card.get_lms_enrolled_users";
+
+/* Detailed employee score card HTML */
+const SCORE_CARD_PAGE = "Score_card.html";
+
+let allUsers = [];
+
+function el(id) {
+  return document.getElementById(id);
+}
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[ch]);
+}
+
+function showState(text, isError = false) {
+  const s = el("state");
+  s.textContent = text;
+  s.className = "state" + (isError ? " error" : "");
+  s.style.display = "block";
+}
+
+function render() {
+  const q = el("search").value.trim().toLowerCase();
+
+  const rows = allUsers.filter(u =>
+    String(u.full_name || "").toLowerCase().includes(q) ||
+    String(u.name || "").toLowerCase().includes(q)
+  );
+
+  el("countText").textContent =
+    `${rows.length} of ${allUsers.length} users enrolled in LMS courses`;
+
+  if (!rows.length) {
+    el("userBody").innerHTML = "";
+    showState(
+      allUsers.length
+        ? "No user matches your search."
+        : "No enrolled users found."
+    );
+    return;
+  }
+
+  el("state").style.display = "none";
+
+  el("userBody").innerHTML = rows.map((u, i) => {
+    const progress = Math.max(
+      0,
+      Math.min(100, Number(u.avg_progress) || 0)
+    );
+
+    // Selected employee ID detailed Score Card page ko pass hogi
+    const link =
+      `${SCORE_CARD_PAGE}?user_id=${encodeURIComponent(u.name)}`;
+
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>
+        <div class="user-name">${esc(u.full_name || u.name)}</div>
+        <div class="user-mail">${esc(u.name)}</div>
+      </td>
+      <td>${esc(u.total_courses)}</td>
+      <td>${esc(u.completed)}</td>
+      <td>
+        <span class="bar">
+          <span style="width:${progress}%"></span>
+        </span>
+        ${progress}%
+      </td>
+      <td>
+        <a class="btn" href="${esc(link)}">
+          Score Card &rarr;
+        </a>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+async function loadUsers() {
+  try {
+    const response = await fetch(USERS_API, {
+      method: "GET",
+      credentials: "same-origin",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+    if (response.status === 403) {
+      showState("You do not have permission to view this page.", true);
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+
+    const json = await response.json();
+
+    allUsers = Array.isArray(json.message)
+      ? json.message
+      : [];
+
+    render();
+
+  } catch (error) {
+    console.error("Could not load users:", error);
+    showState("Could not load users: " + error.message, true);
+  }
+}
+
+el("search").addEventListener("input", render);
+
+loadUsers();
+</script>
+</body>
+</html>
