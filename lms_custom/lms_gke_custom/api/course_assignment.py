@@ -2125,6 +2125,7 @@ def validate_enrolled_course_skills(user: str | None = None):
     }
 
 
+
 def _is_score_card_admin():
     roles = frappe.get_roles()
     return "System Manager" in roles or "Administrator" in roles

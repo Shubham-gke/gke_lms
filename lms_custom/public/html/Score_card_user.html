@@ -96,7 +96,7 @@ tbody tr:hover td { background: #232323; }
 "use strict";
 
 const USERS_API =
-  "/api/method/lms_custom.lms_gke_custom.api.score_card.get_lms_enrolled_users";
+  "/api/method/lms_custom.lms_gke_custom.api.score_card.get_score_card_users";
 
 /* Detailed employee score card HTML */
 const SCORE_CARD_PAGE = "Score_card.html";
@@ -204,6 +204,8 @@ async function loadUsers() {
     allUsers = Array.isArray(json.message)
       ? json.message
       : [];
+
+    // console.table(allUsers.map(u => ({name: u.name, full_name: u.full_name, courses: u.total_courses})))
 
     render();
 

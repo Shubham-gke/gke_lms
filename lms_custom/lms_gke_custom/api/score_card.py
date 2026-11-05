@@ -8,7 +8,7 @@
 import frappe
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_score_card_users():
     """
     Returns the employees an admin can pick in the Score Card page.
@@ -17,6 +17,7 @@ def get_score_card_users():
     Only System Manager / Administrator can call this.
     """
     roles = frappe.get_roles()
+    # frappe.throw(f"{roles}")
     if "System Manager" not in roles and "Administrator" not in roles:
         frappe.throw("Not permitted", frappe.PermissionError)
 

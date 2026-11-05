@@ -1,5 +1,8 @@
 <template>
-	<div class="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
+	<div
+		v-if="!redirecting"
+		class="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8"
+	>
 		<!-- Header -->
 		<div class="mb-8">
 			<div class="flex items-center gap-3">
@@ -195,6 +198,17 @@ import { call } from 'frappe-ui'
 
 const SCORE_CARD_URL = '/assets/lms_custom/html/Score_card.html'
 
+// Page jahan session user ko seedha bhejna hai
+const SCORE_CARD_USER_URL = '/assets/lms_custom/html/Score_card_user.html'
+
+// Ye roles wale users seedha sabki list (Score_card_user) page par jayenge,
+// baaki users ko yehi Score Card page dikhega
+const VIEW_ALL_ROLES = ['System Manager', 'HR Manager', 'Administrator']
+
+// true  = session me user ho to role ke hisaab se redirect
+// false = purana behaviour (ye Vue page hi dikhega)
+const REDIRECT_LOGGED_IN_USER = true
+
 const highlights = [
 	'Appraisal Score',
 	'KRA Progress',
@@ -210,6 +224,7 @@ const usersError = ref('')
 
 const showEmbedded = ref(false)
 const iframeLoading = ref(true)
+const redirecting = ref(false)
 
 const targetUser = computed(() => {
 	return isAdmin.value ? selectedUser.value : currentUser.value
@@ -242,7 +257,36 @@ async function initializeScoreCard() {
 		currentUser.value =
 			typeof response === 'string' ? response : ''
 
+		// Session me user nahi hai: page pehle jaisa hi rahega
 		if (!currentUser.value || currentUser.value === 'Guest') {
+			return
+		}
+
+		// Session me user hai:
+		//  - Admin / HR / System Manager -> direct Score_card_user page
+		//  - Baaki normal users -> yehi Score Card page (View here / Score Card buttons)
+		if (REDIRECT_LOGGED_IN_USER) {
+			let userRoles = []
+
+			try {
+				// arg ke bina call karo: session user ke roles aate hain
+				userRoles = await call('frappe.core.doctype.user.user.get_roles')
+			} catch (error) {
+				console.error('Could not fetch roles:', error)
+			}
+
+			const canViewAll =
+				currentUser.value === 'Administrator' ||
+				(Array.isArray(userRoles) &&
+					VIEW_ALL_ROLES.some((role) => userRoles.includes(role)))
+
+			if (canViewAll) {
+				redirecting.value = true
+				window.location.replace(SCORE_CARD_USER_URL)
+			}
+
+			// Normal user: redirect nahi, page waise hi dikhega
+			// (isAdmin false rehta hai, targetUser = current user)
 			return
 		}
 
